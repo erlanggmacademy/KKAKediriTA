@@ -1,0 +1,159 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import Breadcrumb from '../../../components/Breadcrumb.astro';
+import { DISTRICTS } from '../../../data/competition';
+---
+
+<BaseLayout 
+  title="Pilih Wilayah Pendaftaran Kolektif Sekolah - KKA 2026 Radar Kediri"
+  description="Pendaftaran kolektif rombongan siswa sekolah untuk ajang KKA 2026 Jawa Pos Radar Kediri. Pilih wilayah sekolah Anda untuk mengunduh template resmi dan mengunggah data peserta."
+>
+  <section class="bg-gradient-navy text-white py-5">
+    <div class="container text-center py-2">
+      <span class="badge bg-warning text-dark fw-bold rounded-pill px-3 py-1 mb-2">JALUR KOLEKTIF SEKOLAH</span>
+      <h1 class="display-6 fw-bold mb-2">Pendaftaran Kolektif Peserta KKA 2026</h1>
+      <p class="lead text-white-50 max-w-xl mx-auto mb-1">
+        Khusus guru pembina dan koordinator sekolah. Pilih wilayah sekolah Anda untuk mengunduh template Excel resmi dan mendaftarkan rombongan peserta.
+      </p>
+      <Breadcrumb items={[
+        { label: 'Pendaftaran', href: '/daftar' },
+        { label: 'Pendaftaran Kolektif', active: true }
+      ]} />
+    </div>
+  </section>
+
+
+
+  <!-- Region Selection Cards -->
+  <section class="py-5 bg-white">
+    <div class="container py-3">
+      <!-- Global Closed Notice if Kolektif Disabled -->
+      <div id="kolektifGlobalAlert" class="alert alert-danger border-danger-subtle shadow-sm rounded-4 p-4 mb-4 d-none text-center">
+        <h4 class="fw-bold mb-2 text-danger" id="kolektifAlertTitle">Pendaftaran Kolektif Sekolah Ditutup</h4>
+        <p class="mb-3 text-secondary" id="kolektifAlertMsg">Pendaftaran rombongan kolektif sekolah KKA 2026 telah resmi ditutup. Untuk konfirmasi data rombongan atau koordinasi kuota khusus sekolah, silakan hubungi koordinator panitia.</p>
+        <div class="d-flex justify-content-center gap-2">
+          <a href="/cek-status" class="btn btn-primary btn-sm px-4 py-2 rounded-pill fw-semibold">Cek Status Pendaftaran Sekolah</a>
+          <a href="/daftar" class="btn btn-outline-secondary btn-sm px-4 py-2 rounded-pill fw-semibold">Kembali ke Portal</a>
+        </div>
+      </div>
+
+      <div class="text-center max-w-xl mx-auto mb-5">
+        <h3 class="fw-bold text-kka-primary mb-2">Pilih Wilayah Sekolah Anda</h3>
+        <p class="text-secondary small">Klik wilayah tempat sekolah Anda berdomisili untuk mengunggah file Excel kolektif.</p>
+      </div>
+
+      <div class="row g-4 justify-content-center">
+        {DISTRICTS.map((district) => (
+          <div class="col-md-6 col-lg-4 col-xl-3">
+            <div class="card h-100 p-4 border rounded-4 shadow-sm d-flex flex-column justify-content-between text-center hover-card">
+              <div>
+                <div class="emblem-box mx-auto mb-3 p-2 bg-light rounded-3 border d-flex align-items-center justify-content-center" style="width: 64px; height: 64px;">
+                  <img 
+                    src={district.logoUrl || '/images/logo-kka.webp'} 
+                    alt={`Logo ${district.name}`} 
+                    width="50" 
+                    height="50" 
+                    style="object-fit: contain;" 
+                    data-district-slug={district.slug}
+                  />
+                </div>
+                <span class="badge bg-warning-subtle text-dark border border-warning-subtle rounded-pill px-2.5 py-1 fs-8 fw-bold mb-2">
+                  {district.regionName}
+                </span>
+                <h5 class="fw-bold text-kka-primary mb-2">{district.name}</h5>
+                <p class="text-secondary small mb-3" data-district-desc={district.slug}>{district.description}</p>
+              </div>
+
+              <a 
+                href={`/daftar/kolektif/${district.slug}`} 
+                class="btn btn-warning fw-bold text-dark py-2 rounded-3 w-100 shadow-sm btn-district-kolektif"
+              >
+                Daftar Kolektif {district.badge}
+              </a>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { supabase } from '../../../lib/supabase';
+
+  async function syncKolektifWilayahData() {
+    // 1. Sync custom logo & description
+    const applyDistrictSettings = (settings: any) => {
+      if (!settings) return;
+      document.querySelectorAll('img[data-district-slug]').forEach((imgEl) => {
+        const slug = imgEl.getAttribute('data-district-slug');
+        if (slug && settings[slug]?.logoUrl) {
+          (imgEl as HTMLImageElement).src = settings[slug].logoUrl;
+        }
+      });
+      document.querySelectorAll('[data-district-desc]').forEach((descEl) => {
+        const slug = descEl.getAttribute('data-district-desc');
+        if (slug && settings[slug]?.description) {
+          descEl.textContent = settings[slug].description;
+        }
+      });
+    };
+
+    try {
+      const storedDist = localStorage.getItem('kka_admin_district_settings');
+      if (storedDist) applyDistrictSettings(JSON.parse(storedDist));
+    } catch (_) {}
+
+    try {
+      const { data: appData } = await supabase.from('app_settings').select('value').eq('key', 'district_settings').maybeSingle();
+      if (appData?.value) {
+        applyDistrictSettings(appData.value);
+        localStorage.setItem('kka_admin_district_settings', JSON.stringify(appData.value));
+      }
+    } catch (_) {}
+
+    // 2. Sync registration status
+    try {
+      const stored = localStorage.getItem('kka_registration_status_control');
+      if (stored) {
+        const regCfg = JSON.parse(stored);
+        if (regCfg.kolektif && regCfg.kolektif.enabled === false) {
+          const banner = document.getElementById('kolektifGlobalAlert');
+          if (banner) {
+            banner.classList.remove('d-none');
+            const bTitle = document.getElementById('kolektifAlertTitle');
+            const bMsg = document.getElementById('kolektifAlertMsg');
+            if (bTitle && regCfg.kolektif.closedTitle) bTitle.textContent = regCfg.kolektif.closedTitle;
+            if (bMsg && regCfg.kolektif.closedMsg) bMsg.textContent = regCfg.kolektif.closedMsg;
+          }
+          document.querySelectorAll('.btn-district-kolektif').forEach((btn: any) => {
+            btn.classList.remove('btn-warning', 'text-dark');
+            btn.classList.add('btn-secondary');
+            btn.textContent = regCfg.kolektif.condition === 'kuota_penuh' ? 'Kuota Penuh' : 'Ditutup';
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Error reading reg control:', e);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', syncKolektifWilayahData);
+  } else {
+    syncKolektifWilayahData();
+  }
+  document.addEventListener('astro:page-load', syncKolektifWilayahData);
+</script>
+
+<style>
+  .fs-8 { font-size: 0.78rem; }
+  .max-w-xl { max-width: 600px; }
+  .hover-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .hover-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08) !important;
+  }
+</style>

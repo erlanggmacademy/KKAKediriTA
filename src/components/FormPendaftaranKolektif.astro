@@ -1,0 +1,1803 @@
+---
+import { WAVES, DISTRICTS } from '../data/competition';
+import { SCHOOL_DATABASE } from '../data/schools';
+import { getActiveWave, formatRupiah } from '../lib/pricing';
+
+interface Props {
+  defaultDistrictSlug?: string;
+  defaultDistrictName?: string;
+}
+
+const { 
+  defaultDistrictSlug = 'kabupaten-kediri', 
+  defaultDistrictName = 'Kabupaten Kediri' 
+} = Astro.props;
+
+const currentWave = getActiveWave();
+const currentRegionSchools = SCHOOL_DATABASE[defaultDistrictSlug] || SCHOOL_DATABASE['kabupaten-kediri'];
+const kecamatanList = currentRegionSchools ? Object.keys(currentRegionSchools.districts || {}).sort((a, b) => a.localeCompare(b, 'id')) : [];
+---
+
+<div class="form-kolektif-wrapper max-w-4xl mx-auto">
+  
+  <!-- Header Title Outside Card -->
+  <div class="form-header-box mb-3 text-start">
+    <h2 class="h3 fw-bold text-dark mb-1">Form Pendaftaran Kolektif</h2>
+    <p class="text-secondary small mb-0">
+      Silakan isi data sekolah dan daftar peserta di bawah ini
+    </p>
+  </div>
+
+  <!-- Closed State Notice if Kolektif Disabled by Admin -->
+  <div id="kolektifClosedNotice" class="card border-0 shadow-sm rounded-4 p-5 text-center bg-white mb-4 d-none">
+    <div class="mb-3">
+      <div class="rounded-circle bg-danger-subtle text-danger d-inline-flex p-3">
+        <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+        </svg>
+      </div>
+    </div>
+    <span class="badge bg-danger rounded-pill px-3 py-1 fs-8 fw-bold mb-2 w-fit mx-auto" id="kolektifClosedBadge">PENDAFTARAN KOLEKTIF DITUTUP</span>
+    <h2 class="h3 fw-bold text-dark mb-2" id="kolektifClosedTitle">Pendaftaran Kolektif Telah Ditutup</h2>
+    <p class="text-secondary lead fs-6 max-w-xl mx-auto mb-4" id="kolektifClosedMessage">
+      Pendaftaran rombongan kolektif sekolah KKA 2026 telah resmi ditutup. Untuk konfirmasi data rombongan atau koordinasi kuota khusus sekolah, silakan hubungi koordinator panitia.
+    </p>
+    <div class="d-flex flex-wrap justify-content-center gap-3">
+      <a href="/cek-status" class="btn btn-primary px-4 py-2.5 rounded-pill fw-semibold shadow-sm">
+        Cek Status Pendaftaran Sekolah
+      </a>
+      <a href="/daftar" class="btn btn-outline-secondary px-4 py-2.5 rounded-pill fw-semibold">
+        Kembali ke Portal
+      </a>
+    </div>
+  </div>
+
+  <!-- Main Card with Crisp Royal Blue Border -->
+  <div 
+    class="card rounded-4 p-4 p-md-5 bg-white shadow-sm mb-4 form-main-card" 
+    id="kolektifFormCard"
+    data-district-name={defaultDistrictName}
+    data-district-slug={defaultDistrictSlug}
+  >
+    
+    <form id="formKkaKolektif" class="needs-validation" novalidate>
+
+      <!-- 1. Unggah Berkas Pendaftaran (Excel) -->
+      <div class="form-section mb-4 pb-2">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <span class="section-indicator-bar bg-primary rounded-pill"></span>
+          <h3 class="h5 fw-bold text-dark mb-0">1. Unggah Berkas Pendaftaran (Excel)</h3>
+        </div>
+        
+        <p class="text-secondary small mb-3">
+          Pendaftaran kolektif kini sepenuhnya menggunakan Excel. Silakan unduh template Excel kami di bawah ini, isi data sekolah beserta daftar siswa, lalu unggah kembali berkas tersebut.
+        </p>
+
+        <!-- Box Unduh Template Excel Resmi Berdasarkan Jenjang & Kecamatan -->
+        <div class="p-3.5 p-md-4 rounded-4 border bg-light mb-4">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1d72f2" stroke-width="2.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <strong class="text-dark small">Unduh Template Excel Resmi:</strong>
+          </div>
+          <p class="text-secondary small mb-3">
+            Pilih <strong>Jenjang</strong> dan <strong>Kecamatan</strong> sekolah Anda ({defaultDistrictName}) agar format template langsung sesuai wilayah Anda:
+          </p>
+
+          <div class="row g-3">
+            <div class="col-md-5">
+              <label for="templateJenjangSelect" class="form-label small fw-semibold text-dark mb-1">
+                Pilih Jenjang <span class="text-danger">*</span>
+              </label>
+              <select id="templateJenjangSelect" class="form-select py-2.5 rounded-3">
+                <option value="">-- Pilih Jenjang --</option>
+                <option value="SD-MI">SD / MI Sederajat</option>
+                <option value="SMP-MTs">SMP / MTs Sederajat</option>
+                <option value="SMA-MA-SMK">SMA / MA / SMK Sederajat</option>
+              </select>
+            </div>
+
+            <div class="col-md-7">
+              <label for="templateKecamatanSelect" class="form-label small fw-semibold text-dark mb-1">
+                Pilih Kecamatan ({defaultDistrictName}) <span class="text-danger">*</span>
+              </label>
+              <select id="templateKecamatanSelect" class="form-select py-2.5 rounded-3">
+                <option value="">-- Pilih Kecamatan --</option>
+                {kecamatanList.map(kec => (
+                  <option value={kec}>Kecamatan {kec}</option>
+                ))}
+              </select>
+            </div>
+
+            <!-- Tombol Unduh Muncul Setelah Jenjang & Kecamatan Terpilih -->
+            <div class="col-12 mt-3" id="templateDownloadBox" style="display: none;">
+              <div class="p-3 bg-white rounded-3 border d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-2.5">
+                <div>
+                  <span class="badge bg-primary text-white rounded-pill px-2.5 py-0.5 fs-9 fw-semibold mb-1" id="templateBadgePreview">
+                    Template Siap
+                  </span>
+                  <div class="fw-bold text-dark fs-6" id="templateTitlePreview">
+                    KKA Kolektif Kecamatan
+                  </div>
+                  <span class="text-muted small" style="font-size: 0.8rem;">
+                    Format resmi Excel (.xlsx) dengan metadata wilayah & jenjang otomatis.
+                  </span>
+                </div>
+                <button 
+                  type="button" 
+                  id="btnDownloadCustomTemplate" 
+                  class="btn btn-primary btn-sm px-3.5 py-2 rounded-pill fw-semibold d-inline-flex align-items-center gap-1.5 shadow-2xs hover-scale flex-shrink-0"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  <span>Unduh File Excel</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dashed Drag & Drop Box -->
+        <div 
+          id="excelDropzone" 
+          class="border border-dashed rounded-4 p-4 p-md-5 text-center bg-white mb-4 position-relative cursor-pointer hover-dropzone"
+        >
+          <!-- Excel File Icon (Blue sheet with 'X') -->
+          <div class="excel-icon-box mx-auto mb-3 d-flex align-items-center justify-content-center">
+            <svg width="46" height="46" viewBox="0 0 24 24" fill="none">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="#1d72f2"/>
+              <polyline points="14 2 14 8 20 8" fill="#1557bf"/>
+              <line x1="9.5" y1="12" x2="14.5" y2="18" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <line x1="14.5" y1="12" x2="9.5" y2="18" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+
+          <div class="fw-bold text-dark fs-6 mb-1" id="dropzoneLabel">Pilih atau Tarik File Excel ke Sini</div>
+          <div class="text-muted small mb-3" id="dropzoneSubLabel">Mendukung format .xlsx, .xls, .csv</div>
+
+          <button 
+            type="button" 
+            id="btnPilihBerkas" 
+            class="btn btn-sm btn-light border text-dark fw-semibold px-3 py-1.5 rounded-3 d-inline-flex align-items-center gap-1.5 shadow-2xs"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
+            Pilih Berkas
+          </button>
+
+          <!-- Hidden Input File -->
+          <input 
+            type="file" 
+            id="excelFileInput" 
+            class="d-none" 
+            accept=".xlsx, .xls, .csv" 
+          />
+        </div>
+
+        <!-- STATE 2: Parsed Excel Result Card (Hidden by default in State 1) -->
+        <div id="parsedResultCard" class="d-none border rounded-4 p-4 mb-3 bg-white shadow-2xs">
+          
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="d-flex align-items-center gap-2 text-success fw-bold fs-6">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="m9 12 2 2 4-4"/>
+              </svg>
+              <span>Berkas Valid & Berhasil Dibaca!</span>
+            </div>
+            
+            <button 
+              type="button" 
+              id="btnChangeExcel" 
+              class="btn btn-link text-primary text-decoration-none p-0 small fw-semibold"
+            >
+              Ganti Berkas Excel
+            </button>
+          </div>
+
+          <!-- School Metadata 2-Column Grid -->
+          <div class="p-3 p-md-4 bg-light rounded-3 border mb-4">
+            <div class="row g-2 small">
+              <div class="col-md-6">
+                <div class="d-flex">
+                  <span class="text-muted" style="width: 145px;">Nama Sekolah</span>
+                  <span class="me-2">:</span>
+                  <strong class="text-dark" id="displayNamaSekolah">-</strong>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="d-flex">
+                  <span class="text-muted" style="width: 145px;">WhatsApp PIC</span>
+                  <span class="me-2">:</span>
+                  <strong class="text-dark" id="displayWaPic">-</strong>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="d-flex">
+                  <span class="text-muted" style="width: 145px;">Kota/Kabupaten</span>
+                  <span class="me-2">:</span>
+                  <strong class="text-dark" id="displayWilayah">-</strong>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="d-flex">
+                  <span class="text-muted" style="width: 145px;">Kecamatan Sekolah</span>
+                  <span class="me-2">:</span>
+                  <strong class="text-dark" id="displayKecamatan">-</strong>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="d-flex">
+                  <span class="text-muted" style="width: 145px;">Jenjang Pendidikan</span>
+                  <span class="me-2">:</span>
+                  <strong class="text-dark" id="displayJenjang">-</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Table of Students -->
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold text-dark mb-0">
+              Daftar Peserta (<span id="displayCountSiswa">0</span> Siswa)
+            </h6>
+          </div>
+          
+          <div class="table-responsive border rounded-3 bg-white" style="max-height: 320px; overflow-y: auto;">
+            <table class="table table-hover align-middle mb-0 small text-nowrap">
+              <thead class="table-light sticky-top">
+                <tr>
+                  <th style="width: 45px;" class="ps-3 text-center">#</th>
+                  <th>Nama Siswa</th>
+                  <th>NISN</th>
+                  <th>Gender</th>
+                  <th>Kelas</th>
+                </tr>
+              </thead>
+              <tbody id="displayTableBody">
+                <!-- Injected via JavaScript -->
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- 2. Data Sekolah & Koordinator PIC -->
+      <div class="form-section mb-4 pb-2">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <span class="section-indicator-bar bg-primary rounded-pill"></span>
+          <h3 class="h5 fw-bold text-dark mb-0">2. Data Sekolah & Koordinator PIC</h3>
+        </div>
+        <p class="text-secondary small mb-3">
+          Informasi narahubung koordinator / guru pembina untuk koordinasi dan verifikasi berkas ujian siswa.
+        </p>
+
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label for="inputNamaSekolahKolektif" class="form-label small fw-semibold text-dark">
+              Nama Lengkap Sekolah / Madrasah <span class="text-danger">*</span>
+            </label>
+            <select 
+              id="inputNamaSekolahKolektif" 
+              class="form-select py-2.5 rounded-3" 
+              required 
+            >
+              <option value="">-- Pilih Sekolah / Madrasah --</option>
+            </select>
+            <div class="invalid-feedback">Nama sekolah wajib dipilih.</div>
+
+            <!-- Input Manual jika sekolah belum terdaftar di list -->
+            <div id="manualSchoolBoxKolektif" class="mt-2 d-none">
+              <input 
+                type="text" 
+                id="manualSchoolNameKolektif" 
+                class="form-control form-control-sm py-2 rounded-3" 
+                placeholder="Ketik nama lengkap sekolah Anda..." 
+              />
+              <span class="fs-8 text-muted">Ketik nama lengkap sekolah jika tidak ada di daftar.</span>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <label for="inputPicName" class="form-label small fw-semibold text-dark">
+              Nama Lengkap Guru Pembina / PIC <span class="text-danger">*</span>
+            </label>
+            <input 
+              type="text" 
+              id="inputPicName" 
+              class="form-control py-2.5 rounded-3" 
+              placeholder="cth: Drs. Bambang Sutrisno, M.Pd." 
+              required 
+            />
+            <div class="invalid-feedback">Nama koordinator PIC wajib diisi.</div>
+          </div>
+
+          <div class="col-md-6">
+            <label for="inputPicWa" class="form-label small fw-semibold text-dark">
+              Nomor WhatsApp Aktif PIC <span class="text-danger">*</span>
+            </label>
+            <input 
+              type="tel" 
+              id="inputPicWa" 
+              class="form-control py-2.5 rounded-3" 
+              placeholder="cth: 081234567890" 
+              required 
+            />
+            <div class="form-text fs-8 text-muted">
+              Nomor WhatsApp ini digunakan panitia untuk pengiriman kartu ujian dan informasi teknis perlombaan.
+            </div>
+            <div class="invalid-feedback">Nomor WhatsApp aktif wajib diisi dengan benar.</div>
+          </div>
+
+          <div class="col-md-6">
+            <label for="inputPicJabatan" class="form-label small fw-semibold text-dark">
+              Jabatan / Peran PIC di Sekolah
+            </label>
+            <select id="inputPicJabatan" class="form-select py-2.5 rounded-3">
+              <option value="Guru Pembina">Guru Pembina / Pendamping Lomba</option>
+              <option value="Koordinator Lomba">Koordinator Lomba Sekolah</option>
+              <option value="Wakasek Kesiswaan / Kurikulum">Wakasek Kesiswaan / Kurikulum</option>
+              <option value="Kepala Sekolah">Kepala Sekolah</option>
+              <option value="Staf Tata Usaha">Staf Tata Usaha / Operator</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Pembayaran & Konfirmasi -->
+      <div class="form-section mb-4">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <span class="section-indicator-bar bg-primary rounded-pill"></span>
+          <h3 class="h5 fw-bold text-dark mb-0">3. Pembayaran & Konfirmasi</h3>
+        </div>
+
+        <!-- Rekening Pembayaran Resmi -->
+        <div class="payment-accounts-wrapper mb-4">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1d72f2" stroke-width="2.5" class="flex-shrink-0">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="16" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            <span class="small fw-bold text-dark">
+              Rekening Resmi Pembayaran Panitia:
+            </span>
+          </div>
+
+          <div class="bank-account-card p-3.5 p-md-4 rounded-4 border bg-white shadow-2xs">
+            <!-- Header Kartu: Logo & Nama Bank -->
+            <div class="d-flex align-items-center mb-3 pb-2.5 border-bottom">
+              <div class="d-flex align-items-center gap-3">
+                <img 
+                  src="/images/bri.webp" 
+                  alt="Logo Bank BRI" 
+                  width="36" 
+                  height="36" 
+                  style="object-fit: contain;"
+                  loading="lazy"
+                />
+                <span class="fs-5 fw-bold text-dark mb-0" id="kolektifBankName">Bank BRI Cabang Kediri</span>
+              </div>
+            </div>
+
+            <!-- Bagian Nomor Rekening Panjang & Tombol Salin -->
+            <div class="p-3 bg-light rounded-3 border mb-2.5">
+              <span class="text-muted small d-block mb-1" style="font-size: 0.78rem;" id="kolektifBankNumberLabel">Nomor Rekening BRI:</span>
+              <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2.5">
+                <div class="account-number font-monospace fw-bold text-primary fs-3 text-nowrap" id="kolektifBankNumber" style="letter-spacing: 1px;">
+                  0033-0100-3455-560
+                </div>
+                <div>
+                  <button 
+                    type="button" 
+                    class="btn btn-primary btn-sm px-3.5 py-1.5 rounded-pill fw-semibold btn-copy-account d-inline-flex align-items-center gap-1.5 shadow-2xs hover-scale" 
+                    id="kolektifBtnCopyAccount"
+                    data-copy="003301003455560" 
+                    title="Salin nomor rekening BRI"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                    </svg>
+                    <span>Salin No. Rekening</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Footer: Pemilik Rekening -->
+            <div class="d-flex align-items-center justify-content-between text-muted small px-1 flex-wrap gap-1" style="font-size: 0.82rem;">
+              <span>Atas Nama (Penerima):</span>
+              <strong class="text-dark fs-6" id="kolektifBankHolder">Heri Muda Setiawan</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bukti Transfer Upload -->
+        <div class="mb-4">
+          <label class="form-label small fw-semibold text-dark">
+            Bukti Transfer (Format Gambar) <span class="text-danger">*</span>
+          </label>
+          <div class="upload-wrapper border rounded-3 p-3 bg-light">
+            <input 
+              type="file" 
+              id="transferProofKolektif" 
+              class="form-control" 
+              accept="image/png, image/jpeg, image/jpg, image/webp, application/pdf" 
+              required 
+            />
+            <div class="form-text fs-8 text-muted mt-1.5">
+              Lampirkan struk transfer / bukti mutasi pembayaran panitia. Maks. 2MB.
+            </div>
+            <div class="invalid-feedback">Bukti transfer pembayaran wajib dilampirkan.</div>
+          </div>
+        </div>
+
+        <!-- STATE 2: Rincian Biaya (Hidden by default in State 1) -->
+        <div id="rincianBiayaBox" class="d-none border rounded-3 p-4 bg-white mb-4 shadow-2xs">
+          <div class="d-flex align-items-center gap-1.5 fw-bold text-dark small mb-3">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <line x1="3" y1="9" x2="21" y2="9"/>
+              <line x1="9" y1="21" x2="9" y2="9"/>
+            </svg>
+            <span>Rincian Biaya</span>
+          </div>
+
+          <div class="d-flex justify-content-between text-secondary small mb-1.5">
+            <span>Jumlah Peserta:</span>
+            <strong class="text-dark" id="rincianJumlahPeserta">-</strong>
+          </div>
+
+          <div class="d-flex justify-content-between text-secondary small mb-3">
+            <span>Biaya per Siswa:</span>
+            <strong class="text-dark" id="rincianBiayaPerSiswa">-</strong>
+          </div>
+
+          <div class="border-top border-dashed pt-2.5 d-flex justify-content-between align-items-center">
+            <strong class="text-dark fs-6">Total Pembayaran:</strong>
+            <strong class="text-primary fs-5" id="rincianTotalBayar">Rp 0</strong>
+          </div>
+        </div>
+
+        <!-- Tombol Kirim Pendaftaran Kolektif -->
+        <button 
+          type="submit" 
+          id="btnSubmitKolektif" 
+          class="btn btn-primary btn-lg w-100 fw-bold py-3 rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2 hover-scale"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+            <polyline points="12 13 12 7 9 10"/>
+            <polyline points="12 7 15 10"/>
+          </svg>
+          Kirim Pendaftaran Kolektif
+        </button>
+
+      </div>
+
+    </form>
+
+    <!-- Success Confirmation Receipt Card (Hidden by default) -->
+    <div id="kolektifSuccessCard" class="d-none">
+      <div class="text-center py-4 border-bottom mb-4">
+        <div class="success-icon-badge bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 64px; height: 64px;">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <h3 class="fw-bold text-dark mb-1">Pendaftaran Kolektif Berhasil Dikirim!</h3>
+        <p class="text-secondary small mb-3">
+          Berkas Excel dan data rombongan sekolah Anda telah diterima oleh sistem KKA 2026.
+        </p>
+        <div class="p-3 bg-light rounded-3 border d-inline-block px-4">
+          <span class="fs-8 text-muted text-uppercase fw-semibold d-block">Kode Registrasi Kolektif</span>
+          <span id="resultKodeKolektif" class="h4 fw-black text-primary font-monospace mb-0">-</span>
+        </div>
+      </div>
+
+      <!-- Detail Rangkuman -->
+      <div class="receipt-summary bg-light p-4 rounded-3 border mb-4">
+        <h5 class="fw-bold text-dark mb-3 fs-6">Rangkuman Pendaftaran Sekolah:</h5>
+        <div class="row g-2 small">
+          <div class="col-sm-4 text-muted">Nama Sekolah:</div>
+          <div class="col-sm-8 fw-semibold text-dark" id="summarySekolah">-</div>
+
+          <div class="col-sm-4 text-muted">Guru Pembina / PIC:</div>
+          <div class="col-sm-8 fw-semibold text-dark" id="summaryPicName">-</div>
+
+          <div class="col-sm-4 text-muted">Kota/Kabupaten & Kecamatan:</div>
+          <div class="col-sm-8 fw-semibold text-dark" id="summaryWilayah">-</div>
+
+          <div class="col-sm-4 text-muted">Jenjang Pendidikan:</div>
+          <div class="col-sm-8 fw-semibold text-dark" id="summaryJenjang">-</div>
+
+          <div class="col-sm-4 text-muted">WhatsApp PIC / Guru:</div>
+          <div class="col-sm-8 fw-semibold text-dark" id="summaryWaPic">-</div>
+
+          <div class="col-sm-4 text-muted">Jumlah Peserta:</div>
+          <div class="col-sm-8 fw-semibold text-dark" id="summaryCountSiswa">-</div>
+
+          <div class="col-sm-4 text-muted pt-2 border-top">Total Pembayaran:</div>
+          <div class="col-sm-8 pt-2 border-top h5 fw-bold text-primary mb-0" id="summaryTotalBayar">-</div>
+        </div>
+      </div>
+
+      <!-- Action Button WhatsApp -->
+      <div class="d-flex flex-column gap-2">
+        <a 
+          id="btnWaKolektifDirect" 
+          href="#" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          class="btn btn-success btn-lg fw-bold py-3 rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.099.824z"/>
+          </svg>
+          Kirim Konfirmasi ke WhatsApp Panitia
+        </a>
+
+        <div class="row g-2">
+          <div class="col-sm-6">
+            <a 
+              id="btnCheckStatusDirectKolektif" 
+              href="/daftar/status" 
+              class="btn btn-outline-primary w-100 py-2.5 rounded-3 fw-bold d-flex align-items-center justify-content-center gap-2"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              Cek Status Live
+            </a>
+          </div>
+          <div class="col-sm-6">
+            <a 
+              id="btnCetakBuktiDirectKolektif" 
+              href="/daftar/cetak" 
+              target="_blank" 
+              class="btn btn-dark w-100 py-2.5 rounded-3 fw-bold d-flex align-items-center justify-content-center gap-2"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 6 2 18 2 18 9"/>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                <rect x="6" y="14" width="12" height="8"/>
+              </svg>
+              Cetak Bukti Resmi (PDF)
+            </a>
+          </div>
+        </div>
+
+        <button 
+          type="button" 
+          id="btnResetKolektif" 
+          class="btn btn-outline-secondary py-2.5 rounded-3 fw-semibold"
+        >
+          Unggah File Excel Sekolah Lainnya
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Modal Notifikasi Penolakan: NISN Duplikat / Sudah Terdaftar (Kolektif) -->
+<div class="modal fade" id="modalNisnDuplicateNoticeKolektif" tabindex="-1" aria-hidden="true" style="display: none;">
+  <div class="modal-dialog modal-dialog-centered modal-md">
+    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+      <!-- Modal Header -->
+      <div class="modal-header bg-danger text-white px-4 py-3 border-0">
+        <div class="d-flex align-items-center gap-2.5">
+          <div class="bg-white text-danger rounded-circle p-1.5 d-flex align-items-center justify-content-center shadow-xs" style="width: 32px; height: 32px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+          </div>
+          <div>
+            <h5 class="modal-title fw-bold fs-6 mb-0 text-white">Pendaftaran Kolektif Ditolak: NISN Duplikat</h5>
+            <span class="fs-9 text-white-50">Sistem Validasi Integritas Peserta KKA 2026</span>
+          </div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" id="btnCloseNisnModalXKolektif" aria-label="Tutup"></button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="modal-body p-4">
+        <div class="text-secondary small mb-3 lh-base">
+          Sistem mendeteksi bahwa nomor NISN peserta dalam berkas pendaftaran ini <strong>tercatat ganda atau telah terdaftar sebelumnya</strong> pada pangkalan data resmi KKA Radar Kediri 2026. Sesuai regulasi kompetisi, <strong>satu siswa hanya berhak memiliki 1 nomor registrasi</strong>.
+        </div>
+
+        <!-- Container Rincian NISN Terdaftar -->
+        <div class="bg-light border border-danger-subtle rounded-3 p-3 mb-3" id="containerDuplicateNisnListKolektif" style="max-height: 280px; overflow-y: auto;">
+          <!-- Diisi secara dinamis oleh JavaScript -->
+        </div>
+
+        <!-- Alert Petunjuk -->
+        <div class="alert alert-warning py-2.5 px-3 rounded-3 small mb-0 d-flex align-items-start gap-2 border-0">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-warning shrink-0 mt-0.5">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <span class="text-dark">
+            Silakan perbaiki nomor NISN pada berkas Excel Anda lalu unggah ulang, atau hubungi <strong>Customer Service Panitia</strong> jika membutuhkan bantuan konfirmasi data.
+          </span>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="modal-footer bg-light px-4 py-3 border-0 d-flex justify-content-between flex-wrap gap-2">
+        <button type="button" class="btn btn-outline-secondary px-3.5 py-2 rounded-3 fs-8 fw-semibold" id="btnCloseNisnModalBtnKolektif">
+          Perbaiki Berkas Excel
+        </button>
+        <a href="https://wa.me/6281235508957?text=Halo%20Panitia%20KKA%202026%2C%20sekolah%20kami%20mengalami%20kendala%20NISN%20sudah%20terdaftar%20pada%20pendaftaran%20kolektif." target="_blank" class="btn btn-success px-3.5 py-2 rounded-3 fs-8 fw-semibold d-inline-flex align-items-center gap-1.5 shadow-xs" id="btnHubungiPanitiaNisnKolektif">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.364 2.76 1.057 3.96L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326z"/>
+          </svg>
+          <span>Hubungi Panitia via WA</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Client-side SheetJS Script for Real-time Excel Parsing -->
+<script is:inline src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<script>
+  import { SCHOOL_DATABASE } from '../data/schools';
+  import { processRegistration, checkNisnDuplicates } from '../lib/registrationService';
+  import { getActiveWave } from '../lib/pricing';
+  import { supabase } from '../lib/supabase';
+
+  function applyKolektifClose(regCfg: any) {
+    if (regCfg && regCfg.kolektif && regCfg.kolektif.enabled === false) {
+      const formCard = document.getElementById('kolektifFormCard');
+      const closedNotice = document.getElementById('kolektifClosedNotice');
+      const closedTitle = document.getElementById('kolektifClosedTitle');
+      const closedMsg = document.getElementById('kolektifClosedMessage');
+      const closedBadge = document.getElementById('kolektifClosedBadge');
+
+      if (formCard) formCard.classList.add('d-none');
+      if (closedNotice) closedNotice.classList.remove('d-none');
+      if (closedTitle && regCfg.kolektif.closedTitle) closedTitle.textContent = regCfg.kolektif.closedTitle;
+      if (closedMsg && regCfg.kolektif.closedMsg) closedMsg.textContent = regCfg.kolektif.closedMsg;
+      if (closedBadge) {
+        closedBadge.textContent = regCfg.kolektif.condition === 'kuota_penuh' ? 'KUOTA PENUH' : 'PENDAFTARAN DITUTUP';
+      }
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    let parsedStudents: any[] = [];
+    let prices = { ...getActiveWave().prices };
+    let currentAdminWa = '6281235508957';
+    let lastDetectedJenjangCategory: 'sd' | 'smp' | 'sma' = 'sd';
+
+    function applyDynamicSystemSettings(cfg: any) {
+      if (!cfg) return;
+
+      // 1. Update Bank Information
+      const bankNameEl = document.getElementById('kolektifBankName');
+      const bankNumEl = document.getElementById('kolektifBankNumber');
+      const bankHolderEl = document.getElementById('kolektifBankHolder');
+      const copyBtn = document.getElementById('kolektifBtnCopyAccount') as HTMLElement | null;
+
+      if (bankNameEl && cfg.bankName) bankNameEl.textContent = cfg.bankName;
+      if (bankNumEl && cfg.bankNumber) bankNumEl.textContent = cfg.bankNumber;
+      if (bankHolderEl && cfg.bankHolder) bankHolderEl.textContent = cfg.bankHolder;
+      if (copyBtn && cfg.bankNumber) {
+        copyBtn.setAttribute('data-copy', cfg.bankNumber.replace(/[^0-9]/g, ''));
+      }
+
+      // 2. Update Wave Prices
+      const activeWaveId = Number(cfg.activeWave) || 1;
+      let waveObj: any = null;
+      if (Array.isArray(cfg.waves)) {
+        waveObj = cfg.waves.find((w: any) => w.id === activeWaveId);
+      }
+      if (waveObj && waveObj.prices) {
+        prices = {
+          sd: Number(waveObj.prices.sd) || 25000,
+          smp: Number(waveObj.prices.smp) || 35000,
+          sma: Number(waveObj.prices.sma) || 50000,
+        };
+      }
+
+      // 3. Update WhatsApp CS Number
+      if (cfg.wa1 || cfg.wa2) {
+        let cleanWa = (cfg.wa1 || cfg.wa2).replace(/[^0-9]/g, '');
+        if (cleanWa.startsWith('0')) {
+          cleanWa = '62' + cleanWa.slice(1);
+        }
+        if (cleanWa) currentAdminWa = cleanWa;
+      }
+
+      // If already parsed, recalculate
+      if (parsedStudents && parsedStudents.length > 0 && lastDetectedJenjangCategory) {
+        const rate = prices[lastDetectedJenjangCategory] || 25000;
+        const totalBayar = rate * parsedStudents.length;
+        if (rincianBiayaPerSiswa) rincianBiayaPerSiswa.textContent = formatRp(rate);
+        if (rincianTotalBayar) rincianTotalBayar.textContent = formatRp(totalBayar);
+      }
+    }
+
+    const kolektifCard = document.getElementById('kolektifFormCard');
+    const activeDistrictName = kolektifCard?.dataset.districtName || 'Kabupaten Kediri';
+    const activeDistrictSlug = kolektifCard?.dataset.districtSlug || 'kabupaten-kediri';
+
+    let schoolMeta = {
+      namaSekolah: '',
+      picName: '',
+      picJabatan: 'Guru Pembina',
+      waPic: '',
+      wilayah: activeDistrictName,
+      kecamatan: '',
+      jenjang: 'SD / MI'
+    };
+
+    // Form & UI Elements
+    const formEl = document.getElementById('formKkaKolektif') as HTMLFormElement;
+    const excelDropzone = document.getElementById('excelDropzone');
+    const btnPilihBerkas = document.getElementById('btnPilihBerkas');
+    const excelFileInput = document.getElementById('excelFileInput') as HTMLInputElement;
+    const dropzoneLabel = document.getElementById('dropzoneLabel');
+    const dropzoneSubLabel = document.getElementById('dropzoneSubLabel');
+
+    // Section 1: Template Selection Elements
+    const templateJenjangSelect = document.getElementById('templateJenjangSelect') as HTMLSelectElement | null;
+    const templateKecamatanSelect = document.getElementById('templateKecamatanSelect') as HTMLSelectElement | null;
+    const templateDownloadBox = document.getElementById('templateDownloadBox');
+    const templateBadgePreview = document.getElementById('templateBadgePreview');
+    const templateTitlePreview = document.getElementById('templateTitlePreview');
+    const btnDownloadCustomTemplate = document.getElementById('btnDownloadCustomTemplate');
+
+    // Section 2: PIC & School Elements (School Dropdown with Manual Option)
+    const inputNamaSekolah = document.getElementById('inputNamaSekolahKolektif') as HTMLSelectElement | null;
+    const manualSchoolBoxKolektif = document.getElementById('manualSchoolBoxKolektif');
+    const manualSchoolNameKolektif = document.getElementById('manualSchoolNameKolektif') as HTMLInputElement | null;
+    const inputPicName = document.getElementById('inputPicName') as HTMLInputElement | null;
+    const inputPicWa = document.getElementById('inputPicWa') as HTMLInputElement | null;
+    const inputPicJabatan = document.getElementById('inputPicJabatan') as HTMLSelectElement | null;
+
+    // Parsed Result Card Elements
+    const parsedResultCard = document.getElementById('parsedResultCard');
+    const btnChangeExcel = document.getElementById('btnChangeExcel');
+    const displayNamaSekolah = document.getElementById('displayNamaSekolah');
+    const displayWaPic = document.getElementById('displayWaPic');
+    const displayWilayah = document.getElementById('displayWilayah');
+    const displayKecamatan = document.getElementById('displayKecamatan');
+    const displayJenjang = document.getElementById('displayJenjang');
+    const displayCountSiswa = document.getElementById('displayCountSiswa');
+    const displayTableBody = document.getElementById('displayTableBody');
+
+    // Section 3: Payment & Summary Elements
+    const rincianBiayaBox = document.getElementById('rincianBiayaBox');
+    const rincianJumlahPeserta = document.getElementById('rincianJumlahPeserta');
+    const rincianBiayaPerSiswa = document.getElementById('rincianBiayaPerSiswa');
+    const rincianTotalBayar = document.getElementById('rincianTotalBayar');
+
+    const kolektifSuccessCard = document.getElementById('kolektifSuccessCard');
+    const btnResetKolektif = document.getElementById('btnResetKolektif');
+
+    // 0a. Check local system settings & apply immediately
+    try {
+      const storedSys = localStorage.getItem('kka_admin_system_settings');
+      if (storedSys) applyDynamicSystemSettings(JSON.parse(storedSys));
+    } catch (e) {}
+
+    // 0b. Check if Kolektif registration is closed by Admin
+    try {
+      const storedReg = localStorage.getItem('kka_registration_status_control');
+      if (storedReg) applyKolektifClose(JSON.parse(storedReg));
+    } catch (e) {}
+
+    // Async check to Cloud Supabase for live settings & registration control
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('app_settings')
+          .select('*');
+
+        if (!error && data) {
+          data.forEach((row: any) => {
+            if (row.key === 'system_settings' && row.value) {
+              applyDynamicSystemSettings(row.value);
+              localStorage.setItem('kka_admin_system_settings', JSON.stringify(row.value));
+            } else if (row.key === 'registration_control' && row.value) {
+              applyKolektifClose(row.value);
+              localStorage.setItem('kka_registration_status_control', JSON.stringify(row.value));
+            }
+          });
+        }
+      } catch (err) {}
+    })();
+
+    function formatRp(val: number) {
+      return 'Rp ' + Number(val).toLocaleString('id-ID');
+    }
+
+    // Function to populate School Dropdown based on Wilayah, Jenjang, & Kecamatan
+    function updateSchoolDropdown(prefillSchool = '') {
+      if (!inputNamaSekolah) return;
+      const currentSelection = prefillSchool || (inputNamaSekolah.value !== '__manual__' ? inputNamaSekolah.value : (manualSchoolNameKolektif?.value || ''));
+      const jenjangVal = templateJenjangSelect ? templateJenjangSelect.value : '';
+      const kecVal = templateKecamatanSelect ? templateKecamatanSelect.value : '';
+
+      let jCat: 'sd' | 'smp' | 'sma' | '' = '';
+      if (jenjangVal === 'SD-MI') jCat = 'sd';
+      else if (jenjangVal === 'SMP-MTs') jCat = 'smp';
+      else if (jenjangVal === 'SMA-MA-SMK') jCat = 'sma';
+
+      const regData = (SCHOOL_DATABASE as any)[activeDistrictSlug];
+      let schoolList: string[] = [];
+
+      if (regData && regData.districts) {
+        if (kecVal && regData.districts[kecVal]) {
+          const dObj = regData.districts[kecVal];
+          if (jCat && dObj[jCat]) {
+            schoolList = [...dObj[jCat]];
+          } else {
+            schoolList = [...(dObj.sd || []), ...(dObj.smp || []), ...(dObj.sma || [])];
+          }
+        } else {
+          // If no specific kecamatan selected yet, collect all schools for this jenjang in region
+          Object.keys(regData.districts).forEach(k => {
+            const dObj = regData.districts[k];
+            if (jCat && dObj[jCat]) {
+              schoolList.push(...dObj[jCat]);
+            } else {
+              schoolList.push(...(dObj.sd || []), ...(dObj.smp || []), ...(dObj.sma || []));
+            }
+          });
+        }
+      }
+
+      schoolList = Array.from(new Set(schoolList)).sort((a, b) => a.localeCompare(b, 'id'));
+
+      function renderSchoolSelectOptions(list: string[]) {
+        const cur = inputNamaSekolah.value || currentSelection;
+        inputNamaSekolah.innerHTML = '<option value="">-- Pilih Asal Sekolah / Madrasah --</option>';
+
+        if (cur && cur !== '__manual__' && !list.includes(cur)) {
+          const customOpt = document.createElement('option');
+          customOpt.value = cur;
+          customOpt.textContent = cur;
+          customOpt.selected = true;
+          inputNamaSekolah.appendChild(customOpt);
+        }
+
+        list.forEach(sch => {
+          const opt = document.createElement('option');
+          opt.value = sch;
+          opt.textContent = sch;
+          if (cur === sch) opt.selected = true;
+          inputNamaSekolah.appendChild(opt);
+        });
+
+        const manualOpt = document.createElement('option');
+        manualOpt.value = '__manual__';
+        manualOpt.textContent = '+ Sekolah Lainnya (Ketik Manual)...';
+        if (cur === '__manual__') manualOpt.selected = true;
+        inputNamaSekolah.appendChild(manualOpt);
+      }
+
+      renderSchoolSelectOptions(schoolList);
+
+      // Query LIVE ke Supabase Cloud (tabel schools) untuk menyinkronkan data sekolah mutakhir
+      if (activeDistrictSlug && kecVal && jCat) {
+        supabase
+          .from('schools')
+          .select('nama_sekolah')
+          .eq('region_slug', activeDistrictSlug)
+          .eq('kecamatan', kecVal)
+          .eq('jenjang', jCat)
+          .order('nama_sekolah', { ascending: true })
+          .then(({ data, error }) => {
+            if (!error && data && data.length > 0) {
+              const liveList = Array.from(new Set(data.map(d => d.nama_sekolah).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'id'));
+              if (liveList.length > 0) {
+                renderSchoolSelectOptions(liveList);
+              }
+            }
+          })
+          .catch((err) => {
+            console.warn('[Supabase] Live school options sync error:', err);
+          });
+      }
+
+      // Handle visibility of manual input
+      if (inputNamaSekolah.value === '__manual__') {
+        if (manualSchoolBoxKolektif) manualSchoolBoxKolektif.classList.remove('d-none');
+        if (manualSchoolNameKolektif) manualSchoolNameKolektif.required = true;
+      } else {
+        if (manualSchoolBoxKolektif) manualSchoolBoxKolektif.classList.add('d-none');
+        if (manualSchoolNameKolektif) manualSchoolNameKolektif.required = false;
+      }
+    }
+
+    // Interactive Template Downloader Controller
+    function updateTemplateDownloadBox() {
+      const jenjangVal = templateJenjangSelect ? templateJenjangSelect.value : '';
+      const kecVal = templateKecamatanSelect ? templateKecamatanSelect.value : '';
+
+      if (jenjangVal && kecVal) {
+        if (templateBadgePreview) {
+          templateBadgePreview.textContent = `${activeDistrictName} • Kec. ${kecVal}`;
+        }
+        if (templateTitlePreview) {
+          templateTitlePreview.textContent = `KKA Kolektif ${jenjangVal} Kecamatan ${kecVal}.xlsx`;
+        }
+        if (templateDownloadBox) {
+          templateDownloadBox.style.display = 'block';
+        }
+      } else {
+        if (templateDownloadBox) {
+          templateDownloadBox.style.display = 'none';
+        }
+      }
+
+      // Automatically sync school dropdown options to matched Jenjang & Kecamatan
+      updateSchoolDropdown();
+    }
+
+    if (templateJenjangSelect) templateJenjangSelect.addEventListener('change', updateTemplateDownloadBox);
+    if (templateKecamatanSelect) templateKecamatanSelect.addEventListener('change', updateTemplateDownloadBox);
+
+    // Initial population of school dropdown
+    updateSchoolDropdown();
+
+    // Generate and Download Excel Template matching the exact official structure
+    if (btnDownloadCustomTemplate) {
+      btnDownloadCustomTemplate.addEventListener('click', async () => {
+        const jenjangVal = templateJenjangSelect ? templateJenjangSelect.value : '';
+        const kecVal = templateKecamatanSelect ? templateKecamatanSelect.value : '';
+        if (!jenjangVal || !kecVal) {
+          alert('Silakan pilih Jenjang dan Kecamatan terlebih dahulu.');
+          return;
+        }
+
+        const filename = `KKA Kolektif ${jenjangVal} Kecamatan ${kecVal}.xlsx`;
+        const jenjangSlug = jenjangVal === 'SMP-MTs' ? 'SMP-MTS' : jenjangVal;
+
+        // Build list of candidate file names (supporting SMP-MTS / SMP-MTs and Kota Kediri alias)
+        const isKotaKediriKec = (kecVal === 'Kota' || kecVal === 'Kediri');
+        const candidateFiles = [
+          `KKA Kolektif ${jenjangVal} Kecamatan ${kecVal}.xlsx`,
+          `KKA Kolektif ${jenjangSlug} Kecamatan ${kecVal}.xlsx`,
+          isKotaKediriKec ? `KKA Kolektif ${jenjangVal} Kecamatan Kota Kediri.xlsx` : null,
+          isKotaKediriKec ? `KKA Kolektif ${jenjangSlug} Kecamatan Kota Kediri.xlsx` : null,
+          isKotaKediriKec ? `KKA Kolektif ${jenjangVal} Kecamatan Kota.xlsx` : null,
+          isKotaKediriKec ? `KKA Kolektif ${jenjangSlug} Kecamatan Kota.xlsx` : null,
+          isKotaKediriKec ? `KKA Kolektif ${jenjangVal} Kecamatan Kediri.xlsx` : null,
+          isKotaKediriKec ? `KKA Kolektif ${jenjangSlug} Kecamatan Kediri.xlsx` : null
+        ].filter(Boolean) as string[];
+
+        // Candidate subfolder names
+        const candidateFolders = [
+          `Jenjang ${jenjangVal} ${activeDistrictName}`,
+          `Jenjang ${jenjangSlug} ${activeDistrictName}`
+        ];
+
+        try {
+          // Check static physical files in public/templates/kolektif/
+          for (const fol of candidateFolders) {
+            for (const fil of candidateFiles) {
+              const structuredPath = `/templates/kolektif/Kolektif ${encodeURIComponent(activeDistrictName)}/${encodeURIComponent(fol)}/${encodeURIComponent(fil)}`;
+              let res = await fetch(structuredPath, { method: 'HEAD' });
+              if (res.ok) {
+                const a = document.createElement('a');
+                a.href = structuredPath;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                return;
+              }
+            }
+          }
+
+          // Also check flat path
+          for (const fil of candidateFiles) {
+            const flatPath = `/templates/kolektif/${encodeURIComponent(fil)}`;
+            let res = await fetch(flatPath, { method: 'HEAD' });
+            if (res.ok) {
+              const a = document.createElement('a');
+              a.href = flatPath;
+              a.download = filename;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              return;
+            }
+          }
+        } catch (fetchErr) {
+          console.warn('Checking static template file:', fetchErr);
+        }
+
+        // 3. Fallback: Dynamically generate official Excel file via SheetJS
+        const XLSXLib = (window as any).XLSX;
+        if (!XLSXLib) {
+          alert('Library Excel sedang dimuat. Silakan tunggu 1-2 detik lalu coba lagi.');
+          return;
+        }
+
+        // Build Array of Arrays (AOA) according to official KKA template format
+        const aoaData = [
+          [`Daftar Peserta Kolektif ${activeDistrictName}`],
+          [`Jenjang : ${jenjangVal}`],
+          [`Kecamatan : ${kecVal}`],
+          [`Nama Sekolah : `],
+          [],
+          [
+            'Nomer',
+            'Nama Lengkap Peserta',
+            'NISN',
+            'Nomer Whatsapp Aktif',
+            'Gender Peserta',
+            'Kelas',
+            'Nama Sekolah',
+            'Jenjang Peserta',
+            'Wilayah Sekolah',
+            'Kecamatan Sekolah'
+          ]
+        ];
+
+        // Append 20 rows of pre-filled sample templates
+        for (let i = 1; i <= 20; i++) {
+          aoaData.push([
+            i,
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            jenjangVal,
+            activeDistrictName,
+            kecVal
+          ]);
+        }
+
+        const ws = XLSXLib.utils.aoa_to_sheet(aoaData);
+        ws['!cols'] = [
+          { wch: 8 },  // Nomer
+          { wch: 32 }, // Nama Lengkap Peserta
+          { wch: 18 }, // NISN
+          { wch: 22 }, // Nomer Whatsapp Aktif
+          { wch: 16 }, // Gender Peserta
+          { wch: 12 }, // Kelas
+          { wch: 32 }, // Nama Sekolah
+          { wch: 18 }, // Jenjang Peserta
+          { wch: 24 }, // Wilayah Sekolah
+          { wch: 22 }  // Kecamatan Sekolah
+        ];
+
+        const wb = XLSXLib.utils.book_new();
+        XLSXLib.utils.book_append_sheet(wb, ws, 'Daftar Pendaftar');
+        XLSXLib.writeFile(wb, filename);
+      });
+    }
+
+    // Live update parsed display when user interacts with Section 2
+    if (inputNamaSekolah) {
+      inputNamaSekolah.addEventListener('change', () => {
+        if (inputNamaSekolah.value === '__manual__') {
+          if (manualSchoolBoxKolektif) manualSchoolBoxKolektif.classList.remove('d-none');
+          if (manualSchoolNameKolektif) {
+            manualSchoolNameKolektif.required = true;
+            manualSchoolNameKolektif.focus();
+            schoolMeta.namaSekolah = manualSchoolNameKolektif.value.trim();
+          }
+        } else {
+          if (manualSchoolBoxKolektif) manualSchoolBoxKolektif.classList.add('d-none');
+          if (manualSchoolNameKolektif) {
+            manualSchoolNameKolektif.required = false;
+          }
+          schoolMeta.namaSekolah = inputNamaSekolah.value;
+        }
+        if (displayNamaSekolah) displayNamaSekolah.textContent = schoolMeta.namaSekolah || '-';
+      });
+    }
+
+    if (manualSchoolNameKolektif) {
+      manualSchoolNameKolektif.addEventListener('input', () => {
+        schoolMeta.namaSekolah = manualSchoolNameKolektif.value.trim();
+        if (displayNamaSekolah) displayNamaSekolah.textContent = schoolMeta.namaSekolah || '-';
+      });
+    }
+
+    if (inputPicWa) {
+      inputPicWa.addEventListener('input', () => {
+        schoolMeta.waPic = inputPicWa.value.trim();
+        if (displayWaPic) displayWaPic.textContent = schoolMeta.waPic || '-';
+      });
+    }
+
+    // Trigger File Picker
+    if (btnPilihBerkas && excelFileInput) {
+      btnPilihBerkas.addEventListener('click', (e) => {
+        e.stopPropagation();
+        excelFileInput.click();
+      });
+    }
+
+    if (excelDropzone && excelFileInput) {
+      excelDropzone.addEventListener('click', () => {
+        excelFileInput.click();
+      });
+    }
+
+    // Drag and Drop Effects
+    if (excelDropzone) {
+      ['dragenter', 'dragover'].forEach(eventName => {
+        excelDropzone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          excelDropzone.classList.add('border-primary', 'bg-light');
+        }, false);
+      });
+
+      ['dragleave', 'drop'].forEach(eventName => {
+        excelDropzone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          excelDropzone.classList.remove('border-primary', 'bg-light');
+        }, false);
+      });
+
+      excelDropzone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        if (dt && dt.files.length > 0) {
+          handleFileSelection(dt.files[0]);
+        }
+      });
+    }
+
+    if (excelFileInput) {
+      excelFileInput.addEventListener('change', (e: any) => {
+        if (e.target.files && e.target.files.length > 0) {
+          handleFileSelection(e.target.files[0]);
+        }
+      });
+    }
+
+    // Process Selected File
+    function handleFileSelection(file: File) {
+      if (!file) return;
+
+      if (dropzoneLabel) dropzoneLabel.textContent = file.name;
+      if (dropzoneSubLabel) dropzoneSubLabel.textContent = `${(file.size / 1024).toFixed(1)} KB - Membaca berkas...`;
+
+      const reader = new FileReader();
+      reader.onload = function (evt) {
+        try {
+          const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+          const XLSXLib = (window as any).XLSX;
+          const workbook = XLSXLib.read(data, { type: 'array' });
+
+          // Find appropriate sheet
+          let sheetName = workbook.SheetNames.find((s: string) => {
+            const l = s.toLowerCase();
+            return l.includes('daftar') || l.includes('peserta') || l.includes('pendaftar');
+          }) || workbook.SheetNames[0];
+
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonRows = XLSXLib.utils.sheet_to_json(worksheet, { header: 1 });
+          processExcelRows(jsonRows, file.name);
+        } catch (err) {
+          console.error(err);
+          alert('Gagal membaca file Excel. Pastikan file valid (.xlsx, .xls, atau .csv).');
+          resetToState1();
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function processExcelRows(rows: any[][], fileName: string) {
+      if (!rows || rows.length < 2) {
+        alert('File Excel kosong atau tidak memiliki baris data peserta.');
+        resetToState1();
+        return;
+      }
+
+      parsedStudents = [];
+      let detectedSchool = '';
+      let detectedKecamatan = '';
+      let detectedWa = '';
+      let detectedWilayah = '';
+      let detectedJenjang = '';
+
+      // 1. Scan metadata from top 6 rows (Title, Jenjang, Kecamatan, Nama Sekolah)
+      for (let r = 0; r < Math.min(6, rows.length); r++) {
+        const fullRowStr = (rows[r] || []).map(c => String(c || '').trim()).join(' ');
+
+        // Check Wilayah from "Daftar Peserta Kolektif [Wilayah]"
+        const mWilayah = fullRowStr.match(/daftar peserta kolektif\s+([A-Za-z\s]+)/i);
+        if (mWilayah && mWilayah[1] && !detectedWilayah) {
+          detectedWilayah = mWilayah[1].trim();
+        }
+
+        // Check Jenjang from "Jenjang : [Jenjang]"
+        const mJenjang = fullRowStr.match(/jenjang\s*:\s*([A-Za-z0-9\-\/\s]+)/i);
+        if (mJenjang && mJenjang[1] && !detectedJenjang) {
+          detectedJenjang = mJenjang[1].trim();
+        }
+
+        // Check Kecamatan from "Kecamatan : [Kecamatan]"
+        const mKec = fullRowStr.match(/kecamatan\s*:\s*([A-Za-z0-9\s]+)/i);
+        if (mKec && mKec[1] && !detectedKecamatan) {
+          detectedKecamatan = mKec[1].trim();
+        }
+
+        // Check Nama Sekolah from "Nama Sekolah : [Nama Sekolah]"
+        const mSekolah = fullRowStr.match(/nama sekolah\s*:\s*(.+)/i);
+        if (mSekolah && mSekolah[1] && mSekolah[1].trim() && !detectedSchool) {
+          detectedSchool = mSekolah[1].trim();
+        }
+      }
+
+      // 2. Find table header row (row containing student columns)
+      let headerRowIndex = -1;
+      for (let r = 0; r < Math.min(10, rows.length); r++) {
+        const rowStr = (rows[r] || []).join(' ').toLowerCase();
+        if ((rowStr.includes('nama') || rowStr.includes('peserta') || rowStr.includes('siswa')) && 
+            (rowStr.includes('nisn') || rowStr.includes('gender') || rowStr.includes('kelas') || rowStr.includes('whatsapp') || rowStr.includes('kelamin'))) {
+          headerRowIndex = r;
+          break;
+        }
+      }
+      if (headerRowIndex === -1) headerRowIndex = 0;
+
+      const headerRow = (rows[headerRowIndex] || []).map(h => String(h || '').trim().toLowerCase());
+      const colNama = headerRow.findIndex(h => h.includes('nama siswa') || h.includes('nama lengkap') || h === 'nama' || (h.includes('nama') && !h.includes('sekolah')));
+      const colNisn = headerRow.findIndex(h => h.includes('nisn'));
+      const colJenjang = headerRow.findIndex(h => h.includes('jenjang'));
+      const colGender = headerRow.findIndex(h => h.includes('gender') || h.includes('kelamin') || h === 'jk');
+      const colKelas = headerRow.findIndex(h => h.includes('kelas'));
+      const colSekolah = headerRow.findIndex(h => h.includes('nama sekolah') || h.includes('sekolah') || h.includes('lembaga'));
+      const colKecamatan = headerRow.findIndex(h => h.includes('kecamatan'));
+      const colWa = headerRow.findIndex(h => h.includes('whatsapp') || h.includes('no wa') || h.includes('pic') || h.includes('telepon'));
+      const colWilayah = headerRow.findIndex(h => h.includes('wilayah') || h.includes('kabupaten') || h.includes('kota'));
+
+      const idxNama = colNama >= 0 ? colNama : 1;
+      const idxNisn = colNisn >= 0 ? colNisn : 2;
+      const idxJenjang = colJenjang >= 0 ? colJenjang : -1;
+      const idxGender = colGender >= 0 ? colGender : -1;
+      const idxKelas = colKelas >= 0 ? colKelas : -1;
+      const idxSekolah = colSekolah >= 0 ? colSekolah : -1;
+      const idxKecamatan = colKecamatan >= 0 ? colKecamatan : -1;
+      const idxWa = colWa >= 0 ? colWa : -1;
+      const idxWilayah = colWilayah >= 0 ? colWilayah : -1;
+
+      // 3. Extract participants
+      for (let i = headerRowIndex + 1; i < rows.length; i++) {
+        const r = rows[i];
+        if (!r) continue;
+
+        const nama = String(r[idxNama] || '').trim();
+        if (!nama || nama.toLowerCase().includes('contoh') || nama.toLowerCase().includes('keterangan') || nama === '-') continue;
+
+        const nisn = idxNisn >= 0 ? String(r[idxNisn] || '').trim() : '-';
+        const rawJenjang = idxJenjang >= 0 ? String(r[idxJenjang] || '').trim() : '';
+        const rawGender = idxGender >= 0 ? String(r[idxGender] || '').trim() : '';
+        const kelas = idxKelas >= 0 ? String(r[idxKelas] || '').trim() : '';
+
+        // Extract metadata if present in columns
+        if (idxSekolah >= 0 && r[idxSekolah] && !detectedSchool) {
+          const sVal = String(r[idxSekolah]).trim();
+          if (sVal && !sVal.includes('Nama Sekolah')) detectedSchool = sVal;
+        }
+        if (idxKecamatan >= 0 && r[idxKecamatan] && !detectedKecamatan) detectedKecamatan = String(r[idxKecamatan]).trim();
+        if (idxWa >= 0 && r[idxWa] && !detectedWa) detectedWa = String(r[idxWa]).trim();
+        if (idxWilayah >= 0 && r[idxWilayah] && !detectedWilayah) detectedWilayah = String(r[idxWilayah]).trim();
+        if (rawJenjang && !detectedJenjang) detectedJenjang = rawJenjang;
+
+        // Clean Gender
+        let genderClean = 'Perempuan';
+        const gLow = rawGender.toLowerCase();
+        if (gLow.startsWith('l') || gLow.includes('pria') || gLow.includes('laki')) {
+          genderClean = 'Laki-laki';
+        }
+
+        parsedStudents.push({
+          no: parsedStudents.length + 1,
+          nama,
+          nisn: nisn || '-',
+          gender: genderClean,
+          kelas: kelas || 'Kelas V',
+          rawJenjang: rawJenjang || detectedJenjang || 'SD'
+        });
+      }
+
+      if (parsedStudents.length === 0) {
+        alert('Tidak ditemukan data baris siswa yang valid di dalam file Excel.');
+        resetToState1();
+        return;
+      }
+
+      // Auto-fill input fields in Section 2 from Excel if detected
+      if (detectedSchool) {
+        updateSchoolDropdown(detectedSchool);
+      }
+      if (inputPicWa && !inputPicWa.value.trim() && detectedWa) {
+        inputPicWa.value = detectedWa;
+      }
+
+      const selSekolah = inputNamaSekolah ? inputNamaSekolah.value : '';
+      const actualSekolahVal = selSekolah === '__manual__'
+        ? (manualSchoolNameKolektif ? manualSchoolNameKolektif.value.trim() : '')
+        : selSekolah.trim();
+
+      // Fill metadata fallbacks
+      schoolMeta.namaSekolah = actualSekolahVal || detectedSchool || '';
+      schoolMeta.waPic = (inputPicWa && inputPicWa.value.trim()) || detectedWa || '';
+      schoolMeta.wilayah = detectedWilayah || activeDistrictName;
+      schoolMeta.kecamatan = detectedKecamatan || (templateKecamatanSelect ? templateKecamatanSelect.value : '');
+
+      // Detect Jenjang category for price calculation
+      let jenjangCategory = 'sd';
+      const jCheck = (detectedJenjang + ' ' + (parsedStudents[0] ? parsedStudents[0].rawJenjang : '') + ' ' + (templateJenjangSelect ? templateJenjangSelect.value : '')).toLowerCase();
+      if (jCheck.includes('smp') || jCheck.includes('mts')) {
+        jenjangCategory = 'smp';
+        schoolMeta.jenjang = 'SMP / MTs';
+      } else if (jCheck.includes('sma') || jCheck.includes('smk') || jCheck.includes('ma')) {
+        jenjangCategory = 'sma';
+        schoolMeta.jenjang = 'SMA / MA / SMK';
+      } else {
+        jenjangCategory = 'sd';
+        schoolMeta.jenjang = 'SD / MI';
+      }
+      lastDetectedJenjangCategory = jenjangCategory as 'sd' | 'smp' | 'sma';
+
+      // Populate Metadata Card
+      if (displayNamaSekolah) displayNamaSekolah.textContent = schoolMeta.namaSekolah || '(Isi di Bagian 2)';
+      if (displayWaPic) displayWaPic.textContent = schoolMeta.waPic || '(Isi di Bagian 2)';
+      if (displayWilayah) displayWilayah.textContent = schoolMeta.wilayah;
+      if (displayKecamatan) displayKecamatan.textContent = schoolMeta.kecamatan || '-';
+      if (displayJenjang) displayJenjang.textContent = schoolMeta.jenjang;
+      if (displayCountSiswa) displayCountSiswa.textContent = String(parsedStudents.length);
+
+      // Check for duplicate NISN inside the file
+      const nisnCounts: Record<string, number> = {};
+      parsedStudents.forEach(s => {
+        const cleanN = s.nisn.replace(/[^0-9]/g, '');
+        if (cleanN) {
+          nisnCounts[cleanN] = (nisnCounts[cleanN] || 0) + 1;
+        }
+      });
+
+      // Populate Table Body
+      if (displayTableBody) {
+        displayTableBody.innerHTML = '';
+        parsedStudents.forEach(s => {
+          const cleanN = s.nisn.replace(/[^0-9]/g, '');
+          const isDup = cleanN && (nisnCounts[cleanN] > 1);
+          const tr = document.createElement('tr');
+          if (isDup) tr.className = 'table-danger';
+          tr.innerHTML = `
+            <td class="ps-3 text-center text-muted fw-semibold">${s.no}</td>
+            <td class="fw-bold text-dark">
+              ${s.nama}
+              ${isDup ? '<span class="badge bg-danger ms-1.5 fs-9">NISN Ganda di Excel</span>' : ''}
+            </td>
+            <td class="font-monospace ${isDup ? 'text-danger fw-bold' : ''}">${s.nisn}</td>
+            <td>${s.gender}</td>
+            <td>${s.kelas}</td>
+          `;
+          displayTableBody.appendChild(tr);
+        });
+      }
+
+      // Update Rincian Biaya
+      const rate = prices[jenjangCategory] || 25000;
+      const totalBayar = rate * parsedStudents.length;
+
+      if (rincianJumlahPeserta) rincianJumlahPeserta.textContent = `${parsedStudents.length} Siswa`;
+      if (rincianBiayaPerSiswa) rincianBiayaPerSiswa.textContent = formatRp(rate);
+      if (rincianTotalBayar) rincianTotalBayar.textContent = formatRp(totalBayar);
+
+      // TRANSITION TO STATE 2: Show parsed result card & rincian biaya
+      if (dropzoneLabel) dropzoneLabel.textContent = fileName;
+      if (dropzoneSubLabel) dropzoneSubLabel.textContent = `Berhasil membaca ${parsedStudents.length} peserta`;
+      if (parsedResultCard) parsedResultCard.classList.remove('d-none');
+      if (rincianBiayaBox) rincianBiayaBox.classList.remove('d-none');
+    }
+
+    function resetToState1() {
+      parsedStudents = [];
+      if (excelFileInput) excelFileInput.value = '';
+      if (dropzoneLabel) dropzoneLabel.textContent = 'Pilih atau Tarik File Excel ke Sini';
+      if (dropzoneSubLabel) dropzoneSubLabel.textContent = 'Mendukung format .xlsx, .xls, .csv';
+      if (parsedResultCard) parsedResultCard.classList.add('d-none');
+      if (rincianBiayaBox) rincianBiayaBox.classList.add('d-none');
+    }
+
+    if (btnChangeExcel && excelFileInput) {
+      btnChangeExcel.addEventListener('click', () => {
+        excelFileInput.value = '';
+        excelFileInput.click();
+      });
+    }
+
+    // Form Submit Handler
+    if (formEl) {
+      formEl.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        if (parsedStudents.length === 0) {
+          alert('Silakan unggah dan pilih berkas Excel data siswa terlebih dahulu.');
+          if (excelDropzone) excelDropzone.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+
+        // Validate Section 2: Data PIC & Sekolah
+        const selSekolah = inputNamaSekolah ? inputNamaSekolah.value : '';
+        const namaSekolahVal = selSekolah === '__manual__' 
+          ? (manualSchoolNameKolektif ? manualSchoolNameKolektif.value.trim() : '') 
+          : selSekolah.trim();
+        const picNameVal = inputPicName ? inputPicName.value.trim() : '';
+        const picWaVal = inputPicWa ? inputPicWa.value.trim() : '';
+        const picJabatanVal = inputPicJabatan ? inputPicJabatan.value : 'Guru Pembina';
+
+        if (!namaSekolahVal || !picNameVal || !picWaVal) {
+          formEl.classList.add('was-validated');
+          if (!namaSekolahVal) {
+            if (selSekolah === '__manual__' && manualSchoolNameKolektif) {
+              manualSchoolNameKolektif.focus();
+            } else if (inputNamaSekolah) {
+              inputNamaSekolah.focus();
+            }
+          } else if (!picNameVal && inputPicName) {
+            inputPicName.focus();
+          } else if (!picWaVal && inputPicWa) {
+            inputPicWa.focus();
+          }
+          return;
+        }
+
+        const proofInput = document.getElementById('transferProofKolektif') as HTMLInputElement;
+        if (!proofInput || !proofInput.files || proofInput.files.length === 0) {
+          formEl.classList.add('was-validated');
+          if (proofInput) proofInput.focus();
+          return;
+        }
+
+        schoolMeta.namaSekolah = namaSekolahVal;
+        schoolMeta.picName = picNameVal;
+        schoolMeta.picJabatan = picJabatanVal;
+        schoolMeta.waPic = picWaVal;
+
+        // Show Loading Spinner on Submit Button
+        const btnSubmit = document.getElementById('btnSubmitKolektif') as HTMLButtonElement;
+        const originalBtnText = btnSubmit.innerHTML;
+        btnSubmit.disabled = true;
+
+        try {
+          // 1b. Validasi Keunikan NISN Seluruh Peserta (Tolak Otomatis Jika Sudah Terdaftar)
+          btnSubmit.innerHTML = `
+            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            Memverifikasi Keunikan NISN Peserta...
+          `;
+
+          const nisnList = parsedStudents.map(s => s.nisn);
+          const nisnCheck = await checkNisnDuplicates(nisnList);
+          if (!nisnCheck.valid) {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = originalBtnText;
+            showNisnDuplicateModalKolektif(nisnCheck);
+            return;
+          }
+
+          btnSubmit.innerHTML = `
+            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            Menyimpan ke Database & Spreadsheet...
+          `;
+
+          const randomCode = Math.floor(1000 + Math.random() * 9000);
+          const distCode = activeDistrictSlug.includes('kota') ? 'KDR' : (activeDistrictSlug.includes('nganjuk') ? 'NGJ' : 'KAB');
+          const regCode = `KKA26-K-${distCode}-${randomCode}`;
+
+          // Send to Supabase & Google Apps Script
+          const totalBayarNumber = parseInt(rincianTotalBayar?.textContent?.replace(/[^0-9]/g, '') || '0', 10) || 0;
+
+          await processRegistration({
+            kode: regCode,
+            tipe: 'kolektif',
+            wilayah: schoolMeta.wilayah,
+            kecamatan: schoolMeta.kecamatan,
+            sekolah: schoolMeta.namaSekolah,
+            jenjang: schoolMeta.jenjang,
+            namaKontak: `${schoolMeta.picName} (${schoolMeta.picJabatan})`,
+            hpKontak: schoolMeta.waPic,
+            totalBiaya: totalBayarNumber,
+            students: parsedStudents.map(s => ({
+              nama: s.nama,
+              nisn: s.nisn,
+              gender: s.gender,
+              kelas: s.kelas
+            })),
+            proofFile: proofInput.files.length > 0 ? proofInput.files[0] : null
+          });
+
+          // Populate Success Card
+          const resultKodeKolektif = document.getElementById('resultKodeKolektif');
+          if (resultKodeKolektif) resultKodeKolektif.textContent = regCode;
+          const summarySekolah = document.getElementById('summarySekolah');
+          if (summarySekolah) summarySekolah.textContent = schoolMeta.namaSekolah;
+          const summaryPicName = document.getElementById('summaryPicName');
+          if (summaryPicName) summaryPicName.textContent = `${schoolMeta.picName} (${schoolMeta.picJabatan})`;
+          const summaryWilayah = document.getElementById('summaryWilayah');
+          if (summaryWilayah) summaryWilayah.textContent = `${schoolMeta.wilayah}${schoolMeta.kecamatan ? ` (Kec. ${schoolMeta.kecamatan})` : ''}`;
+          const summaryJenjang = document.getElementById('summaryJenjang');
+          if (summaryJenjang) summaryJenjang.textContent = schoolMeta.jenjang;
+          const summaryWaPic = document.getElementById('summaryWaPic');
+          if (summaryWaPic) summaryWaPic.textContent = schoolMeta.waPic;
+          const summaryCountSiswa = document.getElementById('summaryCountSiswa');
+          if (summaryCountSiswa) summaryCountSiswa.textContent = `${parsedStudents.length} Siswa Terdaftar`;
+          const summaryTotalBayar = document.getElementById('summaryTotalBayar');
+          if (summaryTotalBayar && rincianTotalBayar) summaryTotalBayar.textContent = rincianTotalBayar.textContent;
+
+          // Prepare WhatsApp message with Registration Timestamp
+          const now = new Date();
+          const formattedDateTime = now.toLocaleDateString('id-ID', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+          }) + ' | ' + now.toLocaleTimeString('id-ID', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          }).replace(':', '.') + ' WIB';
+
+          let msg = `*KONFIRMASI PENDAFTARAN KOLEKTIF KKA 2026*\n`;
+          msg += `Halo Panitia KKA Radar Kediri,\nSaya mengonfirmasi pendaftaran kolektif sekolah via berkas Excel:\n\n`;
+          msg += `*Waktu Pendaftaran*: ${formattedDateTime}\n`;
+          msg += `*Kode Pendaftaran*: ${regCode}\n`;
+          msg += `*Nama Sekolah*: ${schoolMeta.namaSekolah}\n`;
+          msg += `*Guru Pembina / PIC*: ${schoolMeta.picName} (${schoolMeta.picJabatan})\n`;
+          msg += `*WhatsApp PIC*: ${schoolMeta.waPic}\n`;
+          msg += `*Wilayah*: ${schoolMeta.wilayah}\n`;
+          msg += `*Kecamatan*: ${schoolMeta.kecamatan ? (schoolMeta.kecamatan.startsWith('Kecamatan') ? schoolMeta.kecamatan : `Kecamatan ${schoolMeta.kecamatan}`) : '-'}\n`;
+          msg += `*Jenjang*: ${schoolMeta.jenjang}\n`;
+          msg += `*Jumlah Peserta*: ${parsedStudents.length} Siswa\n`;
+          msg += `*Total Pembayaran*: ${rincianTotalBayar ? rincianTotalBayar.textContent : '-'}\n\n`;
+          msg += `*Daftar Siswa (Sampel)*:\n`;
+          parsedStudents.slice(0, 5).forEach(s => {
+            msg += `${s.no}. ${s.nama} | NISN: ${s.nisn} | ${s.kelas} (${s.gender})\n`;
+          });
+          if (parsedStudents.length > 5) {
+            msg += `... dan ${parsedStudents.length - 5} siswa lainnya terlampir di file Excel.\n`;
+          }
+          msg += `\nBerkas Excel dan bukti transfer telah diunggah. Mohon verifikasi pendaftaran sekolah kami. Terima kasih.`;
+
+          const btnWa = document.getElementById('btnWaKolektifDirect') as HTMLAnchorElement;
+          if (btnWa) {
+            const waTarget = currentAdminWa || '6281235508957';
+            btnWa.href = `https://wa.me/${waTarget}?text=${encodeURIComponent(msg)}`;
+          }
+          const btnCheckStatus = document.getElementById('btnCheckStatusDirectKolektif') as HTMLAnchorElement;
+          if (btnCheckStatus) {
+            btnCheckStatus.href = `/daftar/status?kode=${encodeURIComponent(regCode)}`;
+          }
+          const btnCetakDoc = document.getElementById('btnCetakBuktiDirectKolektif') as HTMLAnchorElement;
+          if (btnCetakDoc) {
+            btnCetakDoc.href = `/daftar/cetak?kode=${encodeURIComponent(regCode)}`;
+          }
+
+          // Switch to Success State
+          formEl.classList.add('d-none');
+          if (kolektifSuccessCard) {
+            kolektifSuccessCard.classList.remove('d-none');
+            window.scrollTo({ top: kolektifSuccessCard.offsetTop - 80, behavior: 'smooth' });
+          }
+        } catch (submitErr) {
+          console.error('Submit error:', submitErr);
+          alert('Terjadi kendala saat mengirim pendaftaran. Silakan periksa koneksi internet Anda atau coba lagi.');
+        } finally {
+          btnSubmit.disabled = false;
+          btnSubmit.innerHTML = originalBtnText;
+        }
+      });
+    }
+
+    // Copy account number handler
+    document.querySelectorAll('.btn-copy-account').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const textToCopy = btn.getAttribute('data-copy');
+        if (textToCopy) {
+          navigator.clipboard.writeText(textToCopy).then(() => {
+            const span = btn.querySelector('span');
+            if (span) {
+              const origText = span.textContent;
+              span.textContent = 'Tersalin!';
+              btn.classList.remove('btn-primary');
+              btn.classList.add('btn-success');
+              setTimeout(() => {
+                span.textContent = origText;
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-primary');
+              }, 2000);
+            }
+          }).catch(() => {});
+        }
+      });
+    });
+
+    if (btnResetKolektif) {
+      btnResetKolektif.addEventListener('click', () => {
+        formEl.reset();
+        formEl.classList.remove('was-validated');
+        resetToState1();
+        if (templateJenjangSelect) templateJenjangSelect.value = '';
+        if (templateKecamatanSelect) templateKecamatanSelect.value = '';
+        if (templateDownloadBox) templateDownloadBox.style.display = 'none';
+        if (manualSchoolBoxKolektif) manualSchoolBoxKolektif.classList.add('d-none');
+        if (manualSchoolNameKolektif) {
+          manualSchoolNameKolektif.value = '';
+          manualSchoolNameKolektif.required = false;
+        }
+        if (inputNamaSekolah) inputNamaSekolah.value = '';
+        updateSchoolDropdown();
+        if (kolektifSuccessCard) kolektifSuccessCard.classList.add('d-none');
+        formEl.classList.remove('d-none');
+        window.scrollTo({ top: formEl.offsetTop - 80, behavior: 'smooth' });
+      });
+    }
+
+    // Modal Duplicate NISN Handler (Kolektif)
+    function showNisnDuplicateModalKolektif(result: any) {
+      const modalEl = document.getElementById('modalNisnDuplicateNoticeKolektif');
+      const listContainer = document.getElementById('containerDuplicateNisnListKolektif');
+      const btnHubungi = document.getElementById('btnHubungiPanitiaNisnKolektif') as HTMLAnchorElement | null;
+      if (!modalEl || !listContainer) return;
+
+      listContainer.innerHTML = '';
+
+      if (btnHubungi) {
+        const waNum = currentAdminWa || '6281235508957';
+        btnHubungi.href = `https://wa.me/${waNum}?text=${encodeURIComponent('Halo Panitia KKA 2026, sekolah kami mengalami kendala nomor NISN peserta sudah terdaftar pada pendaftaran kolektif.')}`;
+      }
+
+      if (result.internalDuplicates && result.internalDuplicates.length > 0) {
+        const div = document.createElement('div');
+        div.className = 'text-danger fw-bold fs-8 mb-2';
+        div.textContent = 'Duplikasi Nomor NISN di Dalam File Excel:';
+        listContainer.appendChild(div);
+
+        result.internalDuplicates.forEach((n: string) => {
+          const item = document.createElement('div');
+          item.className = 'p-2 bg-white rounded border border-danger-subtle mb-1.5 fs-8 text-dark';
+          item.innerHTML = `<span class="badge bg-danger me-1.5">GANDA</span> <strong>NISN: ${n}</strong> terdata ganda di dalam baris Excel yang diunggah.`;
+          listContainer.appendChild(item);
+        });
+      }
+
+      if (result.dbDuplicates && result.dbDuplicates.length > 0) {
+        const div = document.createElement('div');
+        div.className = 'text-danger fw-bold fs-8 mb-2 mt-2';
+        div.textContent = 'Rincian NISN yang Sudah Terdaftar di Database Panitia:';
+        listContainer.appendChild(div);
+
+        result.dbDuplicates.forEach((d: any) => {
+          const item = document.createElement('div');
+          item.className = 'p-2.5 bg-white rounded-3 border border-danger-subtle mb-2 text-dark fs-8 shadow-2xs';
+          item.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="font-monospace fw-bold text-danger fs-8">NISN: ${d.nisn}</span>
+              <span class="badge bg-danger-subtle text-danger border border-danger-subtle fs-9 font-monospace">${d.kode}</span>
+            </div>
+            <div class="fw-bold text-dark mb-0.5">${d.nama}</div>
+            <div class="text-secondary fs-9">${d.sekolah}</div>
+          `;
+          listContainer.appendChild(item);
+        });
+      }
+
+      modalEl.classList.add('show');
+      modalEl.style.display = 'block';
+      document.body.classList.add('modal-open');
+      let back = document.getElementById('modalCustomBackdropNisnKolektif');
+      if (!back) {
+        back = document.createElement('div');
+        back.id = 'modalCustomBackdropNisnKolektif';
+        back.className = 'modal-backdrop fade show';
+        document.body.appendChild(back);
+      }
+    }
+
+    function closeNisnDuplicateModalKolektif() {
+      const modalEl = document.getElementById('modalNisnDuplicateNoticeKolektif');
+      if (modalEl) {
+        modalEl.classList.remove('show');
+        modalEl.style.display = 'none';
+        document.body.classList.remove('modal-open');
+      }
+      const back = document.getElementById('modalCustomBackdropNisnKolektif');
+      if (back) back.remove();
+    }
+
+    document.getElementById('btnCloseNisnModalXKolektif')?.addEventListener('click', closeNisnDuplicateModalKolektif);
+    document.getElementById('btnCloseNisnModalBtnKolektif')?.addEventListener('click', closeNisnDuplicateModalKolektif);
+
+  });
+</script>
+
+<style>
+  .fs-8 { font-size: 0.78rem; }
+  .fs-9 { font-size: 0.72rem; }
+  .shadow-2xs { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+  .max-w-4xl { max-width: 860px; }
+
+  .bank-account-card {
+    background-color: #fbfcfe;
+    border-color: #e2e8f0;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  }
+  .bank-account-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+  }
+
+  /* Crisp Royal Blue Border for Form Main Card */
+  .form-main-card {
+    border: 2px solid #2563eb !important;
+    border-radius: 18px !important;
+  }
+
+  .section-indicator-bar {
+    width: 4px;
+    height: 20px;
+  }
+
+  .border-dashed {
+    border-style: dashed !important;
+    border-color: #cbd5e1 !important;
+    border-width: 1.5px !important;
+  }
+
+  .hover-dropzone {
+    transition: all 0.2s ease;
+  }
+  .hover-dropzone:hover {
+    border-color: #2563eb !important;
+    background-color: #f8fafc !important;
+  }
+
+  .payment-info-box {
+    background-color: #f0f7ff;
+    border: 1px solid #dbeafe;
+  }
+
+  .hover-btn {
+    transition: all 0.2s ease;
+  }
+  .hover-btn:hover {
+    background-color: #eff6ff !important;
+    color: #1d4ed8 !important;
+    border-color: #2563eb !important;
+  }
+
+  .hover-scale {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .hover-scale:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(29, 114, 242, 0.25) !important;
+  }
+</style>
